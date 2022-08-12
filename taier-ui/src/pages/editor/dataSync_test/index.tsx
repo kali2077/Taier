@@ -30,7 +30,6 @@ import {
 	WhereTextarea,
 } from '@/components/scaffolds/task';
 import { BINARY_ROW_KEY_FLAG, DATA_SYNC_MODE, formItemLayout } from '@/constant';
-import taskSaveService from '@/services/taskSaveService';
 import { CaretRightOutlined } from '@ant-design/icons';
 import molecule from '@dtinsight/molecule';
 import type { FormItemProps } from 'antd';
@@ -1022,12 +1021,6 @@ export default function DataSync() {
 			);
 		});
 	};
-
-	useEffect(() => {
-		taskSaveService.onSaveSyncTask((callback) => {
-			callback(form.validateFields());
-		});
-	}, []);
 
 	return (
 		<div className="taier__dataSync__container">

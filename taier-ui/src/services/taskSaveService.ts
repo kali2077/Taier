@@ -379,60 +379,50 @@ class TaskSaveService extends GlobalEvent {
 		const { taskType } = data;
 		switch (taskType) {
 			case TASK_TYPE_ENUM.SYNC: {
-				this.emit(SaveEventKind.onSaveSyncTask, (isContinue: Promise<any>) => {
-					isContinue
-						.then((values) => {
-							console.log(values);
-						})
-						.catch((errorInfo) => {
-							console.log('errorInfo:', errorInfo);
-						});
-				});
-				// const params: IParamsProps = cloneDeep(data);
-				// const DATASYNC_FIELDS = ['settingMap', 'sourceMap', 'targetMap'] as const;
-				// // 向导模式需要去检查填写是否正确
-				// if (params.createModel === CREATE_MODEL_TYPE.GUIDE) {
-				// 	if (DATASYNC_FIELDS.every((f) => params.hasOwnProperty(f) && params[f])) {
-				// 		const isIncrementMode =
-				// 			params.sourceMap.syncModel !== undefined &&
-				// 			DATA_SYNC_MODE.INCREMENT === params.sourceMap.syncModel;
-				// 		if (!isIncrementMode) {
-				// 			params.sourceMap!.increColumn = undefined; // Delete increColumn
-				// 		}
+				const params: IParamsProps = cloneDeep(data);
+				const DATASYNC_FIELDS = ['settingMap', 'sourceMap', 'targetMap'] as const;
+				// 向导模式需要去检查填写是否正确
+				if (params.createModel === CREATE_MODEL_TYPE.GUIDE) {
+					if (DATASYNC_FIELDS.every((f) => params.hasOwnProperty(f) && params[f])) {
+						const isIncrementMode =
+							params.sourceMap.syncModel !== undefined &&
+							DATA_SYNC_MODE.INCREMENT === params.sourceMap.syncModel;
+						if (!isIncrementMode) {
+							params.sourceMap!.increColumn = undefined; // Delete increColumn
+						}
 
-				// 		// 服务端需要的参数
-				// 		params.sourceMap!.rdbmsDaType = rdbmsDaType.Poll;
-				// 	} else {
-				// 		return Promise.reject(new Error('请检查数据同步任务是否填写正确'));
-				// 	}
-				// }
+						// 服务端需要的参数
+						params.sourceMap!.rdbmsDaType = rdbmsDaType.Poll;
+					} else {
+						return Promise.reject(new Error('请检查数据同步任务是否填写正确'));
+					}
+				}
 
-				// // 修改task配置时接口要求的标记位
-				// params.preSave = true;
-				// params.sqlText = params.value || '';
+				// 修改task配置时接口要求的标记位
+				params.preSave = true;
+				params.sqlText = params.value || '';
 
-				// // 工作流中的数据同步保存
-				// if (params.flowId) {
-				// 	// 如果是 workflow__ 开头的，表示还没有保存过的工作流节点
-				// 	if (params.id?.toString().startsWith('workflow__')) {
-				// 		Reflect.deleteProperty(params, 'id');
-				// 	}
+				// 工作流中的数据同步保存
+				if (params.flowId) {
+					// 如果是 workflow__ 开头的，表示还没有保存过的工作流节点
+					if (params.id?.toString().startsWith('workflow__')) {
+						Reflect.deleteProperty(params, 'id');
+					}
 
-				// 	params.computeType = IComputeType.BATCH;
-				// 	// 如果是没保存过的工作流节点，会获取不到 nodePid，则通过 flowId 去拿 nodePid
-				// 	params.nodePid =
-				// 		params.nodePid || molecule.folderTree.get(data.flowId)?.data.parentId;
-				// }
+					params.computeType = IComputeType.BATCH;
+					// 如果是没保存过的工作流节点，会获取不到 nodePid，则通过 flowId 去拿 nodePid
+					params.nodePid =
+						params.nodePid || molecule.folderTree.get(data.flowId)?.data.parentId;
+				}
 
-				// const res = await api.saveOfflineJobData(params);
+				const res = await api.saveOfflineJobData(params);
 
-				// if (res.code === 1) {
-				// 	message.success('保存成功！');
-				// 	this.emit(SaveEventKind.onSaveTask, res.data);
-				// 	return res;
-				// }
+				if (res.code === 1) {
+					message.success('保存成功！');
+					this.emit(SaveEventKind.onSaveTask, res.data);
+					return res;
+				}
 
-				// return Promise.reject();
 				return Promise.reject();
 			}
 			case TASK_TYPE_ENUM.SQL: {
@@ -771,10 +761,6 @@ class TaskSaveService extends GlobalEvent {
 	 */
 	onSaveTask = (listener: (task: IOfflineTaskProps) => void) => {
 		this.subscribe(SaveEventKind.onSaveTask, listener);
-	};
-
-	onSaveSyncTask = (listener: (callback: (isContinue: Promise<any>) => void) => void) => {
-		this.subscribe(SaveEventKind.onSaveSyncTask, listener);
 	};
 }
 
