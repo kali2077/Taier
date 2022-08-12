@@ -32,6 +32,7 @@
 		"copy-to-clipboard": "^3.3.1",
 		"d3-selection": "1.1.0",
 		"echarts": "3.8.5",
+		"form-render": "^1.13.11",
 		"handsontable": "^11.1.0",
 		"lodash": "^4.17.21",
 		"md5": "^2.3.0",

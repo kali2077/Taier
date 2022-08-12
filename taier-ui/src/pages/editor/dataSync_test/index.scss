@@ -1,0 +1,12 @@
+.taier__dataSync__container {
+	min-width: 770px;
+	padding: 30px 50px;
+	height: 100%:
+	overflow: auto;
+
+	.taier__dataSync__collapse {
+		margin-top: 15px;
+		background: var(--workbenchBackground);
+		border: 1px dashed var(--widget-shadow);
+	}
+}

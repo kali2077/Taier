@@ -10,7 +10,7 @@
             "key": "createModel",
             "value": 0
         },
-        "renderKind": "dataSync",
+        "renderKind": "dataSync_test",
         "formField": [
             "createModel",
             "syncModel"
