@@ -178,6 +178,12 @@ export function BasicCheckbox({
 	);
 }
 
+export function SyncModel({
+	formProps: { name = 'syncModel', ...restFormProps },
+}: WidgetProps<InputProps>) {
+	return <Form.Item name={name} noStyle {...restFormProps} />;
+}
+
 /**
  * 数据源下拉菜单
  */
@@ -206,7 +212,7 @@ export function DataSourceSelect({
 
 	return (
 		<>
-			<Form.Item name={typeNameField} hidden />
+			<Form.Item name={typeNameField} noStyle />
 			<Form.Item
 				name={name}
 				label={label}
@@ -498,8 +504,6 @@ export function TableSelectWithCreateButton({
 
 	const getTableList = () => {
 		setFetching(true);
-		// reset current form value when sourceId changed
-		form.setFieldValue(name, undefined);
 		api.getOfflineTableList({
 			sourceId,
 			schema,
@@ -1333,6 +1337,7 @@ export function IndexTypeAutoComplete({
 	);
 }
 
+export const UnlimitedSpeed = '不限制传输速率';
 /**
  * 传输速率自动补全
  */
@@ -1340,7 +1345,6 @@ export function SpeedAutoComplete({
 	formProps: { label = '作业速率上限', name = 'speed', ...restFormProps },
 	...restProps
 }: WidgetProps<AutoCompleteProps<any, any>>) {
-	const UnlimitedSpeed = '不限制传输速率';
 	/**
 	 * 传输速率选择项
 	 */
@@ -1358,7 +1362,11 @@ export function SpeedAutoComplete({
 
 	return (
 		<Form.Item label={label} name={name} required {...restFormProps}>
-			<AutoComplete options={UNLIMITED_SPEED_OPTION.concat(SPEED_OPTIONS)} {...restProps}>
+			<AutoComplete
+				getPopupContainer={(node) => node.parentNode}
+				options={UNLIMITED_SPEED_OPTION.concat(SPEED_OPTIONS)}
+				{...restProps}
+			>
 				<Input suffix="MB/s" />
 			</AutoComplete>
 		</Form.Item>

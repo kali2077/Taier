@@ -17,7 +17,7 @@
  */
 
 /* eslint-disable no-bitwise */
-import { endsWith, range as lodashRange } from 'lodash';
+import { debounce, endsWith, range as lodashRange } from 'lodash';
 import moment from 'moment';
 import {
 	FAILED_STATUS,
@@ -37,6 +37,11 @@ import { updateDrawer } from '@/components/customDrawer';
 import type { languages } from '@dtinsight/molecule/esm/monaco';
 import { Keywords, Snippets } from './competion';
 import taskRenderService from '@/services/taskRenderService';
+import molecule from '@dtinsight/molecule';
+import notification from '@/components/notification';
+import { EditorEvent } from '@dtinsight/molecule/esm/model';
+import { UnlimitedSpeed } from '@/components/scaffolds/task';
+import { isObjectContainsWith } from './is';
 
 /**
  * 返回今日 [00:00:00, 23:59:69]
@@ -697,3 +702,48 @@ export function renderCharacterByCode(keyCode: number) {
 	const unicodeCharacter = String.fromCharCode(keyCode);
 	if (unicodeCharacter === '\b') return '⌫';
 }
+
+/**
+ * Update the current tab in editor
+ */
+export const updateCurrentEditorTab = debounce((data: Record<string, any>, isEmit = false) => {
+	const { current } = molecule.editor.getState();
+	if (current?.tab) {
+		const valuesInTab = Object.keys(data).reduce<Record<string, any>>((pre, cur) => {
+			return { ...pre, [cur]: current.tab?.data[cur] };
+		}, {});
+
+		// Improve performance
+		const isEquals = Object.keys(data)
+			.map((key) =>
+				isObjectContainsWith(valuesInTab[key] || {}, data[key], (source, target) => {
+					if (source === '-1' && target === UnlimitedSpeed) {
+						return true;
+					}
+				}),
+			)
+			.every(Boolean);
+
+		if (!isEquals) {
+			molecule.editor.updateTab({
+				id: current.tab.id,
+				data: {
+					...current.tab.data,
+					...data,
+				},
+			});
+
+			if (isEmit) {
+				molecule.editor.emit(
+					EditorEvent.OnUpdateTab,
+					molecule.editor.getTabById(current.tab.id, current.id),
+				);
+			}
+		}
+	} else {
+		notification.error({
+			key: 'NULL_CURRENT',
+			message: '未找到当前 tab',
+		});
+	}
+}, 300);

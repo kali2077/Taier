@@ -7,6 +7,7 @@ import {
 	RDB_TYPE_ARRAY,
 } from '@/constant';
 import type { UniqueId } from '@dtinsight/molecule/esm/common/types';
+import { isEqual, pickBy } from 'lodash';
 
 /**
  * 是否需要 schema
@@ -463,4 +464,27 @@ export function isTaskTab(id?: UniqueId) {
 	];
 
 	return !NON_TASK_TAB.some((prefix) => id.startsWith(prefix));
+}
+
+/**
+ * Check the object whether contains the other object
+ */
+export function isObjectContainsWith(
+	object: Record<string, any>,
+	subObject: Record<string, any>,
+	func?: (source: any, target: any) => boolean | undefined,
+) {
+	return Object.keys(pickBy(subObject, (val) => val !== undefined)).reduce((pre, key) => {
+		if (!pre) return pre;
+		if (object.hasOwnProperty(key)) {
+			const funcReturn = func?.(object[key], subObject[key]);
+			if (funcReturn !== undefined) {
+				return funcReturn;
+			}
+
+			return isEqual(object[key], subObject[key]);
+		}
+
+		return false;
+	}, true);
 }

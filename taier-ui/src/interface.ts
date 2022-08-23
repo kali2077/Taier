@@ -325,7 +325,6 @@ export interface ISourceMapProps extends ISourceFormField {
 		key: string;
 		tables?: string[] | string;
 		type: DATA_SOURCE_ENUM;
-		name: string;
 		sourceId?: number;
 	}[];
 	type?: DATA_SOURCE_ENUM;

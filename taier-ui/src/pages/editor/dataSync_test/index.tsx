@@ -1,5 +1,6 @@
 import notification from '@/components/notification';
 import type { WidgetProps } from '@/components/scaffolds/task';
+import { SyncModel, UnlimitedSpeed } from '@/components/scaffolds/task';
 import {
 	BasicCheckbox,
 	BasicInputNumber,
@@ -34,9 +35,12 @@ import { CaretRightOutlined } from '@ant-design/icons';
 import molecule from '@dtinsight/molecule';
 import type { FormItemProps } from 'antd';
 import { Collapse, Form, Spin } from 'antd';
-import { get } from 'lodash';
-import { useEffect } from 'react';
+import { get, pickBy } from 'lodash';
+import { useEffect, useMemo } from 'react';
 import KeyMap from './keymap';
+import { updateCurrentEditorTab } from '@/utils';
+import taskSaveService, { SaveEventKind } from '@/services/taskSaveService';
+import type { IOfflineTaskProps } from '@/interface';
 import './index.scss';
 
 interface IJSSSS {
@@ -68,6 +72,13 @@ const mockJson: IJSSSS = {
 			key: 'sourceMap',
 			title: '选择来源',
 			properties: [
+				{
+					type: 'number',
+					key: 'syncModel',
+					title: '同步模式',
+					widget: 'SyncModel',
+					props: {},
+				},
 				{
 					type: 'number',
 					key: 'sourceId',
@@ -886,6 +897,9 @@ const mockJson: IJSSSS = {
 	],
 };
 
+/**
+ * Register all scaffold templates for widgets
+ */
 const templateRegistry: Record<string, (props: WidgetProps<any>) => JSX.Element | null> = {
 	DataSource: DataSourceSelect,
 	textarea: ExtralConfigTextarea,
@@ -907,6 +921,7 @@ const templateRegistry: Record<string, (props: WidgetProps<any>) => JSX.Element 
 	SpeedAutoComplete,
 	ChannelAutoComplete,
 	RestoreColumnSelect,
+	SyncModel,
 	Input: BasicInput,
 	InputNumber: BasicInputNumber,
 	Textarea: BasicTextArea,
@@ -915,23 +930,62 @@ const templateRegistry: Record<string, (props: WidgetProps<any>) => JSX.Element 
 	Checkbox: BasicCheckbox,
 };
 
+export type IFormFieldProps = Pick<IOfflineTaskProps, 'sourceMap' | 'targetMap' | 'settingMap'>;
+
 export default function DataSync() {
-	const [form] = Form.useForm();
+	const [form] = Form.useForm<IFormFieldProps>();
+	// We have to listen fields' values changed through form.useWatch
+	// since form.setFieldsValue couldn't call onValuesChange
 	const sourceMap = Form.useWatch('sourceMap', form);
 	const targetMap = Form.useWatch('targetMap', form);
 	const settingMap = Form.useWatch('settingMap', form);
-
-	useEffect(() => {
-		if (sourceMap && settingMap && targetMap) {
-			console.log(sourceMap, settingMap, targetMap);
-		}
-	}, [sourceMap, settingMap, targetMap]);
 
 	const globalVariables = {
 		increment:
 			molecule.editor.getState().current?.tab?.data?.sourceMap?.syncModel ===
 			DATA_SYNC_MODE.INCREMENT,
 	};
+
+	useEffect(() => {
+		const updateValues = pickBy(
+			{ sourceMap, settingMap, targetMap },
+			(val) => typeof val === 'object',
+		);
+		if (Object.keys(updateValues).length) {
+			updateCurrentEditorTab(updateValues, true);
+		}
+	}, [sourceMap, settingMap, targetMap]);
+
+	const initialValues = useMemo(() => {
+		const currentTabData: IOfflineTaskProps = molecule.editor.getState().current?.tab?.data;
+		if (!currentTabData) return {};
+
+		return {
+			sourceMap: currentTabData.sourceMap,
+			targetMap: currentTabData.targetMap,
+			settingMap: {
+				...currentTabData.settingMap,
+				speed:
+					currentTabData.settingMap?.speed === '-1'
+						? UnlimitedSpeed
+						: currentTabData.settingMap?.speed,
+			},
+		};
+	}, []);
+
+	// subscribe save event
+	useEffect(() => {
+		const validate = (callback: () => void) => {
+			form.validateFields().then(() => {
+				callback();
+			});
+		};
+
+		taskSaveService.onFormValidate(validate);
+		return () => {
+			taskSaveService.unsubscribe(SaveEventKind.onFormValidate, validate);
+		};
+	}, []);
 
 	const renderFormContent = () => {
 		return mockJson.properties.map((property) => {
@@ -1025,7 +1079,7 @@ export default function DataSync() {
 	return (
 		<div className="taier__dataSync__container">
 			<Spin spinning={false}>
-				<Form form={form} {...formItemLayout}>
+				<Form form={form} {...formItemLayout} initialValues={initialValues}>
 					{renderFormContent()}
 				</Form>
 			</Spin>

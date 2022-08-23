@@ -14,6 +14,9 @@ module.exports = {
 				ccc: '#ccc',
 				ddd: '#ddd',
 			},
+			cursor: {
+				crosshair: 'crosshair',
+			},
 		},
 	},
 	variants: {

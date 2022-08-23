@@ -2,7 +2,7 @@ import { Modal, Form, Input, InputNumber, Select } from 'antd';
 import type { ModalProps } from 'antd';
 import { stringColumnFormat } from '@/components/helpDoc/docs';
 import { DATA_SOURCE_ENUM, formItemLayout, HBASE_FIELD_TYPES, HDFS_FIELD_TYPES } from '@/constant';
-import { isValidFormatType } from '../keymap';
+import { isValidFormatType } from '../../dataSync/keymap';
 import type { IDataColumnsProps } from '@/interface';
 
 const FormItem = Form.Item;
@@ -328,7 +328,13 @@ export default function KeyModal({
 	const text = editField?.value ? '格式' : '格式化';
 
 	return (
-		<Modal title={title} visible={visible} destroyOnClose onOk={handleSubmit} onCancel={handleCancel}>
+		<Modal
+			title={title}
+			visible={visible}
+			destroyOnClose
+			onOk={handleSubmit}
+			onCancel={handleCancel}
+		>
 			<Form form={form} preserve={false} {...formItemLayout}>
 				{renderFormItems()}
 				{canFormat && isReader && (

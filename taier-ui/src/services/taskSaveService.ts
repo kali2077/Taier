@@ -12,6 +12,7 @@ import {
 	FLINK_VERSIONS,
 	rdbmsDaType,
 	SOURCE_TIME_TYPE,
+	SUPPROT_SUB_LIBRARY_DB_ARRAY,
 	TASK_TYPE_ENUM,
 } from '@/constant';
 import { cloneDeep } from 'lodash';
@@ -51,8 +52,14 @@ interface IParamsProps extends IOfflineTaskProps {
 }
 
 export enum SaveEventKind {
+	/**
+	 * The hook that called after saving task
+	 */
 	onSaveTask = 'onsave',
-	onSaveSyncTask = 'onSaveSyncTask',
+	/**
+	 * The hook that called when there is a form waiting to validate
+	 */
+	onFormValidate = 'onFormValidate',
 }
 
 @singleton()
@@ -379,11 +386,9 @@ class TaskSaveService extends GlobalEvent {
 		const { taskType } = data;
 		switch (taskType) {
 			case TASK_TYPE_ENUM.SYNC: {
-				const params: IParamsProps = cloneDeep(data);
-				const DATASYNC_FIELDS = ['settingMap', 'sourceMap', 'targetMap'] as const;
-				// 向导模式需要去检查填写是否正确
-				if (params.createModel === CREATE_MODEL_TYPE.GUIDE) {
-					if (DATASYNC_FIELDS.every((f) => params.hasOwnProperty(f) && params[f])) {
+				return new Promise((resolve, reject) => {
+					const validator = async () => {
+						const params: IParamsProps = { ...data };
 						const isIncrementMode =
 							params.sourceMap.syncModel !== undefined &&
 							DATA_SYNC_MODE.INCREMENT === params.sourceMap.syncModel;
@@ -393,37 +398,63 @@ class TaskSaveService extends GlobalEvent {
 
 						// 服务端需要的参数
 						params.sourceMap!.rdbmsDaType = rdbmsDaType.Poll;
+
+						// 修改task配置时接口要求的标记位
+						params.preSave = true;
+						params.sqlText = params.value || '';
+
+						// 拼接后端需要的值
+						const isSupportSub = SUPPROT_SUB_LIBRARY_DB_ARRAY.includes(
+							params.sourceMap?.type || -1,
+						);
+
+						if (isSupportSub) {
+							params.sourceMap.sourceList = [
+								{
+									key: 'main',
+									tables: params.sourceMap.table,
+									type: params.sourceMap.type!,
+									sourceId: params.sourceMap.sourceId,
+								},
+							];
+						}
+
+						if (/[\u4e00-\u9fa5]/gm.test(params.settingMap?.speed || '')) {
+							params.settingMap!.speed = '-1';
+						}
+
+						// 工作流中的数据同步保存
+						if (params.flowId) {
+							// 如果是 workflow__ 开头的，表示还没有保存过的工作流节点
+							if (params.id?.toString().startsWith('workflow__')) {
+								Reflect.deleteProperty(params, 'id');
+							}
+
+							params.computeType = IComputeType.BATCH;
+							// 如果是没保存过的工作流节点，会获取不到 nodePid，则通过 flowId 去拿 nodePid
+							params.nodePid =
+								params.nodePid ||
+								molecule.folderTree.get(data.flowId)?.data.parentId;
+						}
+
+						api.saveOfflineJobData(params).then((res) => {
+							if (res.code === 1) {
+								message.success('保存成功！');
+								this.emit(SaveEventKind.onSaveTask, res.data);
+								resolve(res);
+							}
+
+							reject();
+						});
+					};
+
+					// ONLY in guide mode should validate form
+					if (data.createModel === CREATE_MODEL_TYPE.GUIDE) {
+						this.emit(SaveEventKind.onFormValidate, validator);
 					} else {
-						return Promise.reject(new Error('请检查数据同步任务是否填写正确'));
+						validator();
 					}
-				}
-
-				// 修改task配置时接口要求的标记位
-				params.preSave = true;
-				params.sqlText = params.value || '';
-
-				// 工作流中的数据同步保存
-				if (params.flowId) {
-					// 如果是 workflow__ 开头的，表示还没有保存过的工作流节点
-					if (params.id?.toString().startsWith('workflow__')) {
-						Reflect.deleteProperty(params, 'id');
-					}
-
-					params.computeType = IComputeType.BATCH;
-					// 如果是没保存过的工作流节点，会获取不到 nodePid，则通过 flowId 去拿 nodePid
-					params.nodePid =
-						params.nodePid || molecule.folderTree.get(data.flowId)?.data.parentId;
-				}
-
-				const res = await api.saveOfflineJobData(params);
-
-				if (res.code === 1) {
-					message.success('保存成功！');
-					this.emit(SaveEventKind.onSaveTask, res.data);
-					return res;
-				}
-
-				return Promise.reject();
+				});
 			}
 			case TASK_TYPE_ENUM.SQL: {
 				const params: IParamsProps = cloneDeep(data);
@@ -761,6 +792,10 @@ class TaskSaveService extends GlobalEvent {
 	 */
 	onSaveTask = (listener: (task: IOfflineTaskProps) => void) => {
 		this.subscribe(SaveEventKind.onSaveTask, listener);
+	};
+
+	onFormValidate = (listener: (callback: () => void) => void) => {
+		this.subscribe(SaveEventKind.onFormValidate, listener);
 	};
 }
 
