@@ -1,7 +1,7 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- ----------------------------
+-- ----------------------------kj
 -- Table structure for console_cluster
 -- ----------------------------
 DROP TABLE IF EXISTS `console_cluster`;
